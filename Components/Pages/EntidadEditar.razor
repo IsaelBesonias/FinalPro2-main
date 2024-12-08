@@ -1,0 +1,143 @@
+@page "/equipos/editar"
+@page "/equipos/editar/{id:int}"
+@rendermode InteractiveServer
+@inject NavigationManager NavMan
+@inject IJSRuntime JSx
+@inject EventoDeportivoContext Sc
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Editar Equipo</PageTitle>
+<h3>Editando Equipo</h3>
+
+<EditForm Model="equipo" OnValidSubmit="GuardarDatos">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="nombre">Nombre del Equipo</label>
+        <InputText id="nombre" class="form-control" @bind-Value="equipo.Nombre" />
+    </div>
+
+    <div class="form-group">
+        <label for="ciudad">Ciudad</label>
+        <InputText id="ciudad" class="form-control" @bind-Value="equipo.Ciudad" />
+    </div>
+
+    <div class="form-group">
+        <label for="pais">País</label>
+        <InputText id="pais" class="form-control" @bind-Value="equipo.Pais" />
+    </div>
+
+    <div class="form-group">
+        <label for="fechaFundacion">Fecha de Fundación</label>
+        <InputDate id="fechaFundacion" class="form-control" @bind-Value="equipo.FechaFundacion" />
+    </div>
+
+    <div class="form-group">
+        <label for="logoUrl">Logo del Equipo</label>
+        <InputText id="logoUrl" class="form-control" @bind-Value="equipo.LogoUrl" />
+    </div>
+
+    <h4>Jugadores</h4>
+
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Fecha Nacimiento</th>
+                <th>Posición</th>
+                <th>Nacionalidad</th>
+                <th>Número Camiseta</th>
+                <th>
+                    <button type="button" class="btn btn-primary" @onclick="AgregarJugador">Agregar Jugador</button>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var jugador in equipo.Jugadores)
+            {
+                <tr>
+                    <td><InputText @bind-Value="jugador.Nombre" class="form-control" /></td>
+                    <td><InputText @bind-Value="jugador.Apellido" class="form-control" /></td>
+                    <td><InputDate @bind-Value="jugador.FechaNacimiento" class="form-control" /></td>
+                    <td><InputText @bind-Value="jugador.Posicion" class="form-control" /></td>
+                    <td><InputText @bind-Value="jugador.Nacionalidad" class="form-control" /></td>
+                    <td><InputNumber @bind-Value="jugador.NumeroCamiseta" class="form-control" /></td>
+                    <td>
+                        <button type="button" class="btn btn-danger" @onclick="() => EliminarJugador(jugador)">
+                            Eliminar
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="text-center mt-3">
+        <button type="submit" class="btn btn-success">Guardar</button>
+        <button type="button" class="btn btn-secondary ml-2" @onclick="Cancelar">Cancelar</button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter]
+    public int Id { get; set; } = 0;
+
+    private Equipo equipo = new Equipo();
+
+    void AgregarJugador()
+    {
+        equipo.Jugadores.Add(new Jugador 
+        { 
+            EquipoId = equipo.Id,
+            FechaNacimiento = DateTime.Now 
+        });
+        StateHasChanged();
+    }
+
+    void EliminarJugador(Jugador jugador)
+    {
+        equipo.Jugadores.Remove(jugador);
+        StateHasChanged();
+    }
+
+    void Cancelar()
+    {
+        NavMan.NavigateTo("/equipos");
+    }
+
+    async Task GuardarDatos()
+    {
+        try 
+        {
+            if (equipo.Id > 0)
+            {
+                Sc.Equipos.Update(equipo);
+            }
+            else
+            {
+                Sc.Equipos.Add(equipo);
+            }
+        
+            await Sc.SaveChangesAsync();
+            await JSx.InvokeVoidAsync("alert", "Equipo registrado exitosamente.");
+            NavMan.NavigateTo("/equipos");
+        }
+        catch (Exception ex)
+        {
+            await JSx.InvokeVoidAsync("alert", $"Error al guardar: {ex.Message}");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Id > 0)
+        {
+            equipo = await Sc.Equipos
+                .Include(e => e.Jugadores)
+                .FirstOrDefaultAsync(x => x.Id == Id) ?? new Equipo();
+            StateHasChanged();
+        }
+    }
+}

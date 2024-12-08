@@ -1,0 +1,104 @@
+@page "/eventos"
+@inject EventoDeportivoContext Sc
+@rendermode InteractiveServer
+@inject NavigationManager NavMan
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Gestión de Eventos Deportivos</PageTitle>
+
+<div class="text-end mb-3">
+    <button type="button" @onclick="AgregarNuevo" class="btn btn-primary">Agregar Evento</button>
+</div>
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Deporte</th>
+            <th>Fecha Inicio</th>
+            <th>Fecha Fin</th>
+            <th>Sede</th>
+            <th>Logo</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach(var evento in lista){
+            <tr>
+                <td>@evento.Nombre</td>
+                <td>@evento.Tipo</td>
+                <td>@evento.Deporte</td>
+                <td>@evento.FechaInicio.ToString("dd/MM/yyyy")</td>
+                <td>@evento.FechaFin.ToString("dd/MM/yyyy")</td>
+                <td>@evento.Sede</td>
+                <td>
+                    <img src="@evento.LogoUrl" 
+                         alt="@evento.Nombre" 
+                         width="100" 
+                         class="img-thumbnail" 
+                         onerror="this.src='path/to/default/event/logo.png'" />
+                </td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-success btn-sm" @onclick="() => Editar(evento.Id)">Editar</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => Eliminar(evento.Id)">Eliminar</button>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Evento> lista = new List<Evento>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CargarEventos();
+        }
+    }
+
+    private async Task CargarEventos()
+    {
+        lista = await Sc.Eventos
+            .Include(e => e.EquiposParticipantes)
+            .Include(e => e.Resultados)
+            .ToListAsync();
+        StateHasChanged();
+    }
+
+    private void Editar(int id)
+    {
+        NavMan.NavigateTo($"eventos/editar/{id}");
+    }
+
+    private void AgregarNuevo()
+    {
+        NavMan.NavigateTo("eventos/editar");
+    }
+
+    private async Task Eliminar(int id)
+    {
+        var eventoAEliminar = lista.FirstOrDefault(e => e.Id == id);
+        
+        if (eventoAEliminar != null)
+        {
+            try 
+            {
+                Sc.Eventos.Remove(eventoAEliminar);
+                await Sc.SaveChangesAsync();
+                
+                lista.Remove(eventoAEliminar);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al eliminar el evento: {ex.Message}");
+            }
+        }
+    }
+}

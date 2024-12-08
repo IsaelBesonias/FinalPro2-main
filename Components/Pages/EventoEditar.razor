@@ -1,0 +1,159 @@
+@page "/eventos/editar"
+@page "/eventos/editar/{Id:int}"
+@using Microsoft.EntityFrameworkCore
+@inject EventoDeportivoContext Sc
+@inject NavigationManager NavMan
+@rendermode InteractiveServer
+
+<PageTitle>@(Id == 0 ? "Crear" : "Editar") Evento</PageTitle>
+
+<EditForm Model="@evento" OnValidSubmit="GuardarEvento">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Nombre del Evento</label>
+                <InputText class="form-control" @bind-Value="evento.Nombre" />
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Tipo de Evento</label>
+                <InputSelect class="form-control" @bind-Value="evento.Tipo">
+                    @foreach (TipoEvento tipo in Enum.GetValues(typeof(TipoEvento)))
+                    {
+                        <option value="@tipo">@tipo</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Deporte</label>
+                <InputText class="form-control" @bind-Value="evento.Deporte" />
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Sede</label>
+                <InputText class="form-control" @bind-Value="evento.Sede" />
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Fecha de Inicio</label>
+                <InputDate class="form-control" @bind-Value="evento.FechaInicio" />
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">Fecha de Fin</label>
+                <InputDate class="form-control" @bind-Value="evento.FechaFin" />
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                <InputTextArea class="form-control" @bind-Value="evento.Descripcion" rows="3" />
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label class="form-label">URL del Logo</label>
+                <InputText class="form-control" @bind-Value="evento.LogoUrl" />
+            </div>
+        </div>
+    </div>
+    <div class="text-end">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Evento evento = new Evento();
+    private List<Equipo> equipos = new List<Equipo>();
+    private List<int> EquiposSeleccionados { get; set; } = new List<int>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Cargar equipos para el dropdown
+        equipos = await Sc.Equipos.ToListAsync();
+
+        // Si es edición, cargar el evento existente
+        if (Id != 0)
+        {
+            evento = await Sc.Eventos
+                .Include(e => e.EquiposParticipantes)
+                .FirstOrDefaultAsync(e => e.Id == Id);
+
+            if (evento == null)
+            {
+                NavMan.NavigateTo("/eventos");
+                return;
+            }
+
+            // Preparar los equipos seleccionados
+            EquiposSeleccionados = evento.EquiposParticipantes.Select(e => e.Id).ToList();
+        }
+    }
+
+    private async Task GuardarEvento()
+    {
+        try 
+        {
+            // Limpiar equipos participantes actuales
+            evento.EquiposParticipantes.Clear();
+
+            // Agregar equipos seleccionados
+            foreach (var equipoId in EquiposSeleccionados)
+            {
+                var equipo = await Sc.Equipos.FindAsync(equipoId);
+                if (equipo != null)
+                {
+                    evento.EquiposParticipantes.Add(equipo);
+                }
+            }
+
+            if (Id == 0)
+            {
+                // Nuevo evento
+                Sc.Eventos.Add(evento);
+            }
+            else 
+            {
+                // Actualizar evento existente
+                Sc.Eventos.Update(evento);
+            }
+
+            await Sc.SaveChangesAsync();
+            NavMan.NavigateTo("/eventos");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al guardar el evento: {ex.Message}");
+        }
+    }
+
+    private void Cancelar()
+    {
+        NavMan.NavigateTo("/eventos");
+    }
+}

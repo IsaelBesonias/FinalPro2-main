@@ -1,0 +1,53 @@
+@page "/jugadores"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@inject EventoDeportivoContext Sc
+
+<h3>Jugadores de Béisbol</h3>
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Equipo</th>
+            <th>Edad</th>
+            <th>Posición</th>
+            <th>Nacionalidad</th>
+            <th>Número Camiseta</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var jugador in lista)
+        {
+            <tr>
+                <td>@jugador.Nombre</td>
+                <td>@jugador.Apellido</td>
+                <td>@jugador.Equipo?.Nombre</td>
+                <td>@CalcularEdad(jugador.FechaNacimiento)</td>
+                <td>@jugador.Posicion</td>
+                <td>@jugador.Nacionalidad</td>
+                <td>@jugador.NumeroCamiseta</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code{
+    List<Jugador> lista = new List<Jugador>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        lista = await Sc.Jugadores
+            .Include(j => j.Equipo)
+            .ToListAsync();
+        StateHasChanged();
+    }
+
+    private int CalcularEdad(DateTime fechaNacimiento)
+    {
+        var edad = DateTime.Today.Year - fechaNacimiento.Year;
+        if (DateTime.Today < fechaNacimiento.AddYears(edad)) edad--;
+        return edad;
+    }
+}

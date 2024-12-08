@@ -1,0 +1,103 @@
+@page "/equipos"
+@inject EventoDeportivoContext Sc
+@rendermode InteractiveServer
+@inject NavigationManager NavMan
+@using Microsoft.EntityFrameworkCore
+
+<PageTitle>Gestión de Equipos</PageTitle>
+
+<div class="text-end">
+    <button type="button" @onclick="AgregarNuevo" class="btn btn-primary">Agregar Equipo</button>
+</div>
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Ciudad</th>
+            <th>País</th>
+            <th>Fecha Fundación</th>
+            <th>Jugadores</th>
+            <th>Logo</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach(var equipo in lista){
+            <tr>
+                <td>@equipo.Nombre</td>
+                <td>@equipo.Ciudad</td>
+                <td>@equipo.Pais</td>
+                <td>@equipo.FechaFundacion.ToString("dd/MM/yyyy")</td>
+                <td>@equipo.Jugadores.Count</td>
+                <td>
+                    <img src="@equipo.LogoUrl" 
+                         alt="@equipo.Nombre" 
+                         width="100" 
+                         class="img-thumbnail" 
+                         onerror="this.src='path/to/default/team/logo.png'" />
+                </td>
+                <td>
+                    <div class="btn-group">
+                        <button class="btn btn-success btn-sm" @onclick="() => Editar(equipo.Id)">Editar</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => Eliminar(equipo.Id)">Eliminar</button>
+                    </div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Equipo> lista = new List<Equipo>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CargarEquipos();
+        }
+    }
+
+    private async Task CargarEquipos()
+    {
+        lista = await Sc.Equipos
+            .Include(e => e.Jugadores)
+            .ToListAsync();
+        StateHasChanged();
+    }
+
+    private void Editar(int id)
+    {
+        NavMan.NavigateTo($"equipos/editar/{id}");
+    }
+
+    private void AgregarNuevo()
+    {
+        NavMan.NavigateTo("equipos/editar");
+    }
+
+    private async Task Eliminar(int id)
+    {
+        var equipoAEliminar = lista.FirstOrDefault(e => e.Id == id);
+        
+        if (equipoAEliminar != null)
+        {
+            try 
+            {
+                Sc.Equipos.Remove(equipoAEliminar);
+                await Sc.SaveChangesAsync();
+                
+                lista.Remove(equipoAEliminar);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                // Manejar errores de eliminación 
+                // Podría mostrar un mensaje de error al usuario
+                Console.WriteLine($"Error al eliminar el equipo: {ex.Message}");
+            }
+        }
+    }
+}
